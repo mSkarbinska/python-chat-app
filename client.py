@@ -1,8 +1,11 @@
-from asyncio import sleep
+"""This is the client side of the chat application. 
+It is responsible for sending and receiving messages to/from the server."""
+
 import socket
 import threading
 import select
 import time
+
 
 HOST = "localhost"
 PORT = 7878
@@ -15,13 +18,12 @@ udp_client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 udp_client.bind(("", tcp_client.getsockname()[1]))
 udp_client.connect((HOST, PORT))
 
-
 terminal_lock = threading.Lock()
 
 
 while True:
     nickname = input("Choose your nickname (must be longer than 2 letters): ")
-    tcp_client.send("{}".format(nickname).encode("ascii"))
+    tcp_client.send(f'{nickname}'.encode("ascii"))
 
     response = tcp_client.recv(1024).decode("ascii")
     if response.startswith("OK"):
@@ -36,7 +38,7 @@ def receive():
 
         if udp_client in ready_clients:
             try:
-                message, addr = udp_client.recvfrom(1024)
+                message = udp_client.recvfrom(1024)
                 with terminal_lock:
                     print("<udp> ", message.decode("ascii"))
             except ConnectionResetError:
@@ -58,7 +60,7 @@ def receive():
 
 
 def write():
-    print("Write your messages in given formats: \n tcp: @to message, \n udp: starts with u command")
+    print("Write your messages in given formats: \n tcp: @to message, \n udp: u message")
 
     while True:
         with terminal_lock:
@@ -69,9 +71,8 @@ def write():
         elif client_input.lower().startswith("u"):
             udp_client.sendto(client_input[1:].encode("ascii"), (HOST, PORT))
         else:
-            message = "{}: {}".format(nickname, client_input)
+            message = f'{nickname}: {client_input}'
             tcp_client.send(message.encode("ascii"))
-            
         # Pause the thread to give the terminal to the receive function
         time.sleep(0.1)
 

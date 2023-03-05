@@ -1,3 +1,5 @@
+"""_summary_: This file contains code for running chat server handling TCP and UDP connections."""
+
 import socket
 import threading
 
@@ -24,12 +26,11 @@ def main():
         tcp_socket.listen(5)
         print("Server is listening...")
 
-        udp_thread = threading.Thread(target=handle_udp_connection, args=(udp_socket,), daemon=True).start()
+        threading.Thread(target=handle_udp_connection, args=(udp_socket,), daemon=True).start()
         
         while True:
             client, addr = tcp_socket.accept()
-            print("Connected to client: {}".format(addr))
-            
+            print(f'Connected to client: {addr}')
             try:
                 get_nickname_from_client(client)
             except ConnectionResetError:
@@ -41,11 +42,10 @@ def main():
             thread.start()
             
     except KeyboardInterrupt:
-        for t in threads:
-            t.join()
+        for thread in threads:
+            thread.join()
         udp_socket.close()
         tcp_socket.close()
-        udp_thread.join()
         exit()
 
 
@@ -58,14 +58,14 @@ def handle_tcp_connection(client):
 
             recipient_index = nicknames.index(recipient)
             destination_client = clients[recipient_index]
-            destination_client.send("{}: {}".format(sender, message_content).encode("ascii"))
+            destination_client.send(f"{sender}: {message}".encode("ascii"))
 
         except ConnectionError:
             index = clients.index(client)
             clients.remove(client)
             client.close()
             nickname = nicknames[index]
-            print("{} disconnected!".format(nickname))
+            print(f"{nickname} disconnected!")
             nicknames.remove(nickname)
             break
         except MissingSenderError:
@@ -85,13 +85,15 @@ def handle_tcp_connection(client):
 def handle_udp_connection(udp_socket):
     while True:
         message, addr = udp_socket.recvfrom(1024)
-        print("<udp> Received message from {}: {}".format(addr, message.decode("ascii")))
+        message = message.decode("ascii")
+        print(f"<udp> Received message from {addr}: {message}")
         for client in clients:
             client_addr = client.getpeername()
             nickname = nicknames[clients.index(client)]
             if client_addr != addr:
                 print("received udp, try to send udp stuff to the rest")
-                udp_socket.sendto("{}: {}".format(nickname, message.decode("ascii")).encode("ascii"), client_addr)
+                message = message.decode("ascii")
+                udp_socket.sendto(f"{nickname}: {message}".encode("ascii"), client_addr)
 
 
 def get_nickname_from_client(client):
@@ -106,20 +108,20 @@ def get_nickname_from_client(client):
         
     nicknames.append(nickname)
     clients.append(client)
-    print("Nickname is {}".format(nickname))
+    print(f"Nickname is {nickname}")
     client.send("OK".encode("ascii"))
     
     
 def split_message(message):
     try:
         colon_pos = message.index(":")
-    except ValueError:
-        raise MissingSenderError("No sender given!")
+    except ValueError  as exc:
+        raise MissingSenderError("No sender given!") from exc
 
     try:
         at_pos = message.index("@")
-    except ValueError:
-        raise MissingRecipientError("No recipient given!")
+    except ValueError as exc:
+        raise MissingRecipientError("No recipient given!") from exc
 
     # Extract the sender, recipient, and message strings
     sender = message[:colon_pos].strip()
