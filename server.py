@@ -31,21 +31,7 @@ def main():
             print("Connected to client: {}".format(addr))
             
             try:
-                client.send("NICK".encode("ascii"))
-                nickname = client.recv(1024).decode("ascii")
-                if len(nickname) < 2:
-                    client.send("Nickname is too short!".encode("ascii"))
-                    nickname = client.recv(1024).decode("ascii")
-                nicknames.append(nickname)
-                clients.append(client)
-
-                print("Nickname is {}".format(nickname))
-                client.send(
-                    "You have been added to server with nickname {}!".format(
-                        nickname
-                    ).encode("ascii")
-                )
-                
+                get_nickname_from_client(client)
             except ConnectionResetError:
                 print("Client suddenly disconnected!")
                 continue
@@ -70,13 +56,9 @@ def handle_tcp_connection(client):
             sender, recipient, message_content = split_message(message)
             print(sender, recipient, message_content)
 
-            if not recipient:
-                client.send("No recipient given!".encode("ascii"))
-            else:
-                recipient_index = nicknames.index(recipient)
-                destination_client = clients[recipient_index]
-                destination_client.send(
-                    "{}: {}".format(sender, message_content).encode("ascii"))
+            recipient_index = nicknames.index(recipient)
+            destination_client = clients[recipient_index]
+            destination_client.send("{}: {}".format(sender, message_content).encode("ascii"))
 
         except ConnectionError:
             index = clients.index(client)
@@ -112,7 +94,22 @@ def handle_udp_connection(udp_socket):
                 udp_socket.sendto("{}: {}".format(nickname, message.decode("ascii")).encode("ascii"), client_addr)
 
 
-
+def get_nickname_from_client(client):
+    nickname = client.recv(1024).decode("ascii")
+    
+    while len(nickname) <= 2 or nickname in nicknames:
+        if len(nickname) <= 2:
+            client.send("Nickname must be longer than 2 letters.".encode("ascii"))
+        else:
+            client.send("Nickname is already taken.".encode("ascii"))
+        nickname = client.recv(1024).decode("ascii")
+        
+    nicknames.append(nickname)
+    clients.append(client)
+    print("Nickname is {}".format(nickname))
+    client.send("OK".encode("ascii"))
+    
+    
 def split_message(message):
     try:
         colon_pos = message.index(":")
@@ -145,6 +142,7 @@ class MissingRecipientError(Exception):
 class UdpError(Exception):
     def __init__(self, message):
         self.message = message
+
 
 if __name__ == "__main__":
     main()
