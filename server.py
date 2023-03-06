@@ -37,15 +37,11 @@ def main():
                 print("Client suddenly disconnected!")
                 continue
             
-            thread = threading.Thread(target=handle_tcp_connection, args=(client,))
+            thread = threading.Thread(target=handle_tcp_connection, args=(client,), daemon=True)
             threads.append(thread)
             thread.start()
             
     except KeyboardInterrupt:
-        for thread in threads:
-            thread.join()
-        udp_socket.close()
-        tcp_socket.close()
         exit()
 
 
@@ -58,7 +54,7 @@ def handle_tcp_connection(client):
 
             recipient_index = nicknames.index(recipient)
             destination_client = clients[recipient_index]
-            destination_client.send(f"{sender}: {message}".encode("ascii"))
+            destination_client.send(f"{sender}: {message_content}".encode("ascii"))
 
         except ConnectionError:
             index = clients.index(client)
@@ -80,11 +76,17 @@ def handle_tcp_connection(client):
             print("Recipient not found!")
             client.send("Recipient not found!".encode("ascii"))
             continue
+        except (KeyboardInterrupt, EOFError):
+            exit()
 
 
 def handle_udp_connection(udp_socket):
     while True:
-        message, addr = udp_socket.recvfrom(1024)
+        try:
+            message, addr = udp_socket.recvfrom(1024)
+        except OSError:
+            return
+        
         message = message.decode("ascii")
         print(f"<udp> Received message from {addr}: {message}")
         for client in clients:
@@ -92,7 +94,6 @@ def handle_udp_connection(udp_socket):
             nickname = nicknames[clients.index(client)]
             if client_addr != addr:
                 print("received udp, try to send udp stuff to the rest")
-                message = message.decode("ascii")
                 udp_socket.sendto(f"{nickname}: {message}".encode("ascii"), client_addr)
 
 
