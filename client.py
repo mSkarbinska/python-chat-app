@@ -3,10 +3,10 @@ It is responsible for sending and receiving messages to/from the server."""
 
 import socket
 import struct
+import sys
 import threading
 import select
 import time
-
 
 SERVER_HOST = "localhost"
 SERVER_PORT = 7878
@@ -69,17 +69,21 @@ def receive():
 
 
 def write():
-    print("Write your messages in given formats: \n tcp: @to message, \n udp: u message")
+    print("Write your messages in given formats: \n tcp: @to message, \n udp: u message, \n multicast: m message,")
     try:
         while True:
-            try:
-                client_input = input(">")
-            except (KeyboardInterrupt, EOFError):
-                tcp_client.close()
-                udp_client.close()
-                multicast_client.close()
-                exit()
+            client_input = []
+            while True:
+                try:
+                    line = input()
+                except EOFError:
+                    break
+                if line == "":
+                    break
+                client_input.append(line)
                 
+            client_input = "\n".join(client_input)
+            
             if not client_input:
                 continue
             elif client_input.lower().startswith("u"):

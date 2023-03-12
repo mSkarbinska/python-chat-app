@@ -3,7 +3,6 @@
 import socket
 import threading
 
-
 HOST = "localhost"
 PORT = 7878
 
@@ -50,7 +49,6 @@ def handle_tcp_connection(client):
         try:
             message = client.recv(1024).decode("ascii")
             sender, recipient, message_content = split_message(message)
-            print(sender, recipient, message_content)
 
             recipient_index = nicknames.index(recipient)
             destination_client = clients[recipient_index]
@@ -86,14 +84,11 @@ def handle_udp_connection(udp_socket):
             message, addr = udp_socket.recvfrom(1024)
         except OSError:
             return
-        
         message = message.decode("ascii")
-        print(f"<udp> Received message from {addr}: {message}")
         for client in clients:
             client_addr = client.getpeername()
             nickname = nicknames[clients.index(client)]
             if client_addr != addr:
-                print("received udp, try to send udp stuff to the rest")
                 udp_socket.sendto(f"{nickname}: {message}".encode("ascii"), client_addr)
 
 
@@ -109,14 +104,14 @@ def get_nickname_from_client(client):
         
     nicknames.append(nickname)
     clients.append(client)
-    print(f"Nickname is {nickname}")
+    print(f"Nickname of new client is {nickname}")
     client.send("OK".encode("ascii"))
     
     
 def split_message(message):
     try:
         colon_pos = message.index(":")
-    except ValueError  as exc:
+    except ValueError as exc:
         raise MissingSenderError("No sender given!") from exc
 
     try:
@@ -124,10 +119,9 @@ def split_message(message):
     except ValueError as exc:
         raise MissingRecipientError("No recipient given!") from exc
 
-    # Extract the sender, recipient, and message strings
     sender = message[:colon_pos].strip()
-    recipient = message[at_pos + 1 :].split()[0]
-    message = message[at_pos + 1 + len(recipient) + 1 :].strip()
+    recipient = message[at_pos + 1:].split()[0]
+    message = message[at_pos + 1 + len(recipient) + 1:].strip()
 
     return sender, recipient, message
 
